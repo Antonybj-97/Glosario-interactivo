@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Memoria - Glosario</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <style>
+    .card-box { perspective: 800px; }
+    .card {
+      cursor: pointer;
+      transition: transform 0.3s, background-color 0.3s;
+      background: #f5f5f5;
+      border-radius: .5rem;
+      height: 150px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 10px;
+    }
+    .card-text {
+      visibility: hidden;
+      transition: visibility 0.3s;
+    }
+    .matched {
+      background-color: #d4edda !important;
+    }
+    .not-matched {
+      background-color: #f8d7da !important;
+    }
+  </style>
+</head>
+<body>
+  <section class="section">
+    <div class="container">
+      <h1 class="title has-text-centered">🧠 Memoria - Glosario</h1>
+
+      <div class="has-text-centered mb-4">
+        <label class="label">Nivel:</label>
+        <div class="select is-medium">
+          <select id="level-select">
+            <option value="6">Fácil (6 pares)</option>
+            <option value="10">Medio (10 pares)</option>
+            <option value="15">Difícil (15 pares)</option>
+          </select>
+        </div>
+        <button class="button is-primary is-medium mt-2" onclick="startGame()">▶️ Jugar</button>
+        <button class="button is-warning is-medium mt-2" onclick="location.reload()">🔄 Reiniciar</button>
+      </div>
+
+      <div class="columns is-mobile is-centered mb-4">
+        <div class="column is-narrow">
+          <p><strong>Puntaje:</strong> <span id="score">0</span></p>
+        </div>
+        <div class="column is-narrow">
+          <p><strong>Tiempo:</strong> <span id="timer">0</span> segundos</p>
+        </div>
+      </div>
+
+      <div id="game-board" class="columns is-multiline"></div>
+    </div>
+  </section>
+
+  <script>
+    let cards = [], flipped = [], isBusy = false;
+    let score = 0, timer = 0, interval = null;
+
+    function startGame() {
+      const board = document.getElementById('game-board');
+      board.innerHTML = '';
+      cards = [];
+      flipped = [];
+      isBusy = false;
+      score = 0;
+      timer = 0;
+      document.getElementById('score').textContent = '0';
+      document.getElementById('timer').textContent = '0';
+      if (interval) clearInterval(interval);
+      interval = setInterval(() => {
+        timer++;
+        document.getElementById('timer').textContent = timer;
+      }, 1000);
+
+      const level = parseInt(document.getElementById('level-select').value, 10);
+
+      fetch('/api/words')
+        .then(res => res.json())
+        .then(words => {
+          const selected = words.slice(0, level);
+          selected.forEach(w => {
+            // Duplicamos la carta con el mismo término para formar pares
+            cards.push({ text: w.term, meaning: w.meaning, matchId: w.id });
+            cards.push({ text: w.term, meaning: w.meaning, matchId: w.id });
+          });
+          shuffle(cards);
+          renderCards();
+        });
+    }
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function renderCards() {
+      const board = document.getElementById('game-board');
+      board.innerHTML = '';
+      cards.forEach((card, i) => {
+        const div = document.createElement('div');
+        div.className = 'column is-one-quarter card-box';
+        div.innerHTML = `
+          <div class="card" data-index="${i}">
+            <span class="card-text">${card.text}</span>
+          </div>
+        `;
+        board.appendChild(div);
+      });
+
+      document.querySelectorAll('.card').forEach(card => {
+        card.addEventListener('click', () => flipCard(card));
+      });
+    }
+
+    function flipCard(el) {
+      if (isBusy) return;
+
+      const idx = Number(el.dataset.index);
+      const card = cards[idx];
+      const span = el.querySelector('.card-text');
+
+      if (flipped.includes(idx) || el.classList.contains('matched')) return;
+
+      span.style.visibility = 'visible';
+      flipped.push(idx);
+
+      if (flipped.length === 2) {
+        isBusy = true;
+        const [i1, i2] = flipped;
+        const c1 = cards[i1], c2 = cards[i2];
+        const el1 = document.querySelector(`[data-index="${i1}"]`);
+        const el2 = document.querySelector(`[data-index="${i2}"]`);
+
+        setTimeout(() => {
+          if (c1.matchId === c2.matchId && i1 !== i2) {
+            el1.classList.add('matched');
+            el2.classList.add('matched');
+            score++;
+            document.getElementById('score').textContent = score;
+            alert(`✅ Pareja encontrada:\n${c1.meaning}`);
+          } else {
+            el1.classList.add('not-matched');
+            el2.classList.add('not-matched');
+            setTimeout(() => {
+              el1.querySelector('.card-text').style.visibility = 'hidden';
+              el2.querySelector('.card-text').style.visibility = 'hidden';
+              el1.classList.remove('not-matched');
+              el2.classList.remove('not-matched');
+            }, 600);
+          }
+          flipped = [];
+          isBusy = false;
+          checkGameComplete();
+        }, 800);
+      }
+    }
+
+    function checkGameComplete() {
+      const matched = document.querySelectorAll('.card.matched').length;
+      if (matched === cards.length) {
+        clearInterval(interval);
+        setTimeout(() => {
+          alert(`🎉 ¡Ganaste!\nPuntaje: ${score}\nTiempo: ${timer} segundos`);
+        }, 300);
+      }
+    }
+  </script>
+</body>
+</html>

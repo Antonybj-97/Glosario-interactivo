@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Glosario Interactivo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+  <script>
+    // Abre/cierra los formularios inline
+    function toggleEditForm(id) {
+      document.getElementById('edit-form-' + id).classList.toggle('is-hidden');
+    }
+  </script>
+</head>
+<body>
+  <section class="section">
+    <div class="container">
+      <!-- Título y logout -->
+      <nav class="level">
+        <div class="level-left">
+          <h1 class="title">📘 Glosario Interactivo</h1>
+        </div>
+        <div class="level-right">
+          <% if (user) { %>
+            <div class="level-item">Hola, <strong><%= user.username %></strong></div>
+            <a href="/logout" class="button is-light level-item">Cerrar sesión</a>
+          <% } %>
+        </div>
+      </nav>
+
+      <!-- Buscadores y botón crear -->
+      <div class="columns mb-4">
+        <div class="column">
+          <form method="GET" action="/">
+            <!-- Autocompletar términos -->
+            <div class="field">
+              <label class="label">Buscar por término</label>
+              <div class="control">
+                <input
+                  class="input"
+                  type="text"
+                  id="filter-term"
+                  name="searchTerm"
+                  placeholder="Ej. Algoritmo"
+                  value="<%= searchTerm %>"
+                  autocomplete="off"
+                  list="termsList"
+                />
+                <datalist id="termsList"></datalist>
+              </div>
+            </div>
+
+            <!-- Filtrar por definición -->
+            <div class="field">
+              <label class="label">Buscar por definición</label>
+              <div class="control">
+                <input
+                  class="input"
+                  type="text"
+                  name="searchMeaning"
+                  placeholder="Ej. Conjunto de pasos"
+                  value="<%= searchMeaning %>"
+                />
+              </div>
+            </div>
+
+            <div class="control">
+              <button class="button is-info">Buscar</button>
+            </div>
+          </form>
+        </div>
+        <div class="column is-narrow">
+          <a href="/create" class="button is-primary">➕ Nuevo término</a>
+        </div>
+      </div>
+
+      <!-- Cards -->
+      <div class="columns is-multiline">
+        <% if (words.length === 0) { %>
+          <div class="column">
+            <p class="has-text-centered">No se encontraron términos.</p>
+          </div>
+        <% } %>
+
+        <% words.forEach(word => { %>
+          <div class="column is-one-third">
+            <div class="card">
+              <header class="card-header">
+                <p class="card-header-title"><%= word.term %></p>
+              </header>
+              <div class="card-content">
+                <div class="content"><%= word.meaning %></div>
+              </div>
+              <footer class="card-footer">
+                <% if (user && word.user_id === user.id) { %>
+                  <a href="javascript:void(0);" onclick="toggleEditForm(<%= word.id %>)" class="card-footer-item">✏️ Editar</a>
+                <% } %>
+              </footer>
+              <div id="edit-form-<%= word.id %>" class="card-content is-hidden">
+                <form method="POST" action="/update/<%= word.id %>">
+                  <div class="field">
+                    <label class="label">Término</label>
+                    <div class="control">
+                      <input class="input" type="text" name="term" value="<%= word.term %>" required>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label class="label">Significado</label>
+                    <div class="control">
+                      <textarea class="textarea" name="meaning" required><%= word.meaning %></textarea>
+                    </div>
+                  </div>
+                  <div class="field is-grouped">
+                    <button class="button is-success">Actualizar</button>
+                    <button type="button" onclick="toggleEditForm(<%= word.id %>)" class="button is-light">Cancelar</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  </section>
+
+  <!-- Script de autocompletar -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const input = document.getElementById('filter-term');
+      const dataList = document.getElementById('termsList');
+      let timeout = null;
+
+      input.addEventListener('input', () => {
+        clearTimeout(timeout);
+        const q = input.value.trim();
+        if (!q) {
+          dataList.innerHTML = '';
+          return;
+        }
+        timeout = setTimeout(() => {
+          fetch(`/suggest?q=${encodeURIComponent(q)}`)
+            .then(res => res.json())
+            .then(terms => {
+              dataList.innerHTML = terms
+                .map(t => `<option value="${t}">`)
+                .join('');
+            })
+            .catch(console.error);
+        }, 300);
+      });
+    });
+  </script>
+</body>
+</html>

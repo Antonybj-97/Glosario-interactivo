@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Registro - Glosario</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css" />
+</head>
+<body>
+  <section class="section">
+    <div class="container" style="max-width: 400px;">
+      <h1 class="title has-text-centered">📝 Registro de usuario</h1>
+
+      <% if (error) { %>
+        <div class="notification is-danger"><%= error %></div>
+      <% } %>
+
+      <form method="POST" action="/register">
+        <div class="field">
+          <label class="label">Usuario</label>
+          <div class="control">
+            <input class="input" type="text" name="username" required />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Contraseña</label>
+          <div class="control">
+            <input class="input" type="password" name="password" required />
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label">Confirmar contraseña</label>
+          <div class="control">
+            <input class="input" type="password" name="password2" required />
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="control">
+            <button class="button is-primary is-fullwidth">Registrarse</button>
+          </div>
+        </div>
+      </form>
+
+      <p class="has-text-centered mt-4">
+        ¿Ya tienes cuenta? <a href="/login">Inicia sesión aquí</a>
+      </p>
+    </div>
+  </section>
+</body>
+</html>
