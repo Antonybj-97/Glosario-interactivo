@@ -1,31 +1,35 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const wordRoutes = require('./routes/wordRoutes');
-const authRoutes = require('./routes/authRoutes'); // Importar rutas auth
+const authRoutes = require('./routes/authRoutes');
 const session = require('express-session');
 require('dotenv').config();
 
 const app = express();
 
+// Configuración del motor de vistas
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Configurar sesión ANTES de usar rutas
+// Configuración de sesión para producción
 app.use(session({
-  secret: 'clave-secreta-muy-segura', // cambia esta clave
+  secret: process.env.SESSION_SECRET || 'clave-secreta-backup', // Usa variable de entorno
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 3600000 } // 1 hora
+  cookie: { 
+    maxAge: 3600000, // 1 hora
+    secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
+    sameSite: 'lax'
+  }
 }));
 
-// Usar rutas de autenticación primero
+// Rutas
 app.use(authRoutes);
-
-// Luego las rutas del glosario
 app.use('/', wordRoutes);
 
+// Puerto dinámico para Render
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
