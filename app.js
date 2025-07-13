@@ -1,35 +1,31 @@
 const express = require('express');
-const bodyParser = require('body-parser');
-const wordRoutes = require('./routes/wordRoutes');
-const authRoutes = require('./routes/authRoutes');
 const session = require('express-session');
-require('dotenv').config();
+const RedisStore = require('connect-redis').default;
+const { createClient } = require('redis');
+
+// Configura Redis
+const redisClient = createClient({
+  url: process.env.REDIS_URL,
+  socket: {
+    connectTimeout: 5000,
+    reconnectStrategy: (retries) => Math.min(retries * 100, 5000)
+  }
+});
+
+redisClient.on('error', (err) => console.error('Redis Client Error:', err));
+redisClient.connect().catch(console.error);
 
 const app = express();
 
-// Configuración del motor de vistas
-app.set('view engine', 'ejs');
-app.use(express.static('public'));
-app.use(bodyParser.urlencoded({ extended: true }));
-
-// Configuración de sesión para producción
+// Configuración de sesión
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'clave-secreta-backup', // Usa variable de entorno
+  store: new RedisStore({ client: redisClient }),
+  secret: process.env.SESSION_SECRET || 'fallback-secret-' + Math.random().toString(36).substring(2),
   resave: false,
   saveUninitialized: false,
-  cookie: { 
-    maxAge: 3600000, // 1 hora
-    secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
-    sameSite: 'lax'
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 horas
   }
 }));
-
-// Rutas
-app.use(authRoutes);
-app.use('/', wordRoutes);
-
-// Puerto dinámico para Render
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Servidor corriendo en el puerto ${PORT}`);
-});
